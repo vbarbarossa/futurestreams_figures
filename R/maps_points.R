@@ -484,26 +484,18 @@ p_in <- ggplot() +
   )
 # p_in
 
-p_ts <- ggplot(ts %>% filter(var == 'discharge') %>% 
-                 mutate(value = (value-273.15))) +
+p_ts <- ggplot(ts %>% filter(var == 'discharge')) +
   geom_line(aes(x = year,y = value, color = GCM, linetype = RCP), size = 1) +
-  # geom_line(aes(x = year,y = zoo::rollmean(value,52*10,na.pad=T), color = GCM, linetype = RCP), size = 5) +
-  geom_line(data = ts_annual%>% filter(var == 'discharge') %>% mutate(value = (value-273.15))
+  geom_line(data = ts_annual%>% filter(var == 'discharge')
             ,aes(x = year,y = value, color = GCM, linetype = RCP)
             ,show.legend = F, size = 5) +
-  # geom_smooth(aes(x = year,y = value, color = GCM, linetype = RCP), show.legend = F,
-  #             method =  'gam',se = FALSE, size = 5) +
-  # ylim(c(15,45)) +
   ylab('Discharge [m3/s]') +
-  facet_wrap('river', nrow=1) +
+  facet_wrap('river', nrow=1,scales = 'free_y') +
   theme_bw(
     base_size = 50
-    # ,base_line_size = 50
-    # ,base_rect_size = 50
   ) +
   guides(color = guide_legend(override.aes = list(size = 5)),
          linetype = guide_legend(override.aes = list(size = 5))) +
-  
   theme(
     legend.position = 'bottom',
     legend.direction = 'vertical',
