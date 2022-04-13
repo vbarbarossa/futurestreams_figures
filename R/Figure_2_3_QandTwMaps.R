@@ -1,5 +1,5 @@
 library(ggplot2); library(RColorBrewer); library(sf); library(foreach); library(raster); library(dplyr)
-
+sf_use_s2(FALSE)
 
 #<<<<<<<<<<<< try a different point shape, maybe one that is much smaller?
 
@@ -82,6 +82,16 @@ graticules <- rnaturalearth::ne_download(type = "graticules_30", category = "phy
   st_crop(cropping_poly) %>%
   st_transform(crs_custom)
 
+# world <- read_sf('~/surfdrive/data/naturalearth/ne_110m_admin_0_countries/ne_110m_admin_0_countries.shp')[,1] %>%
+#   st_crop(cropping_poly) %>%
+#   st_transform(crs_custom)
+# bb <- read_sf('~/surfdrive/data/naturalearth/ne_110m_graticules_all/ne_110m_wgs84_bounding_box.shp') %>%
+#   st_crop(cropping_poly) %>%
+#   st_transform(crs_custom)
+# graticules <- read_sf('~/surfdrive/data/naturalearth/ne_110m_graticules_all/ne_110m_graticules_30.shp') %>%
+#   st_crop(cropping_poly) %>%
+#   st_transform(crs_custom)
+
 # create mask layer based on q
 qm <- q
 qm[qm < cutoff] <- NA
@@ -125,6 +135,8 @@ Tlim_lo = -5
 # PlotBreaks = 1
 PlotFactor = 0.035
 
+br <- seq((Tlim_lo-1),(Tlim_up+1),1)
+
 main$t[main$t > Tlim_up] <- Tlim_up+1
 main$t[main$t < Tlim_lo] <- Tlim_lo-1
 
@@ -146,7 +158,7 @@ p <- ggplot() +
     breaks = seq((Tlim_lo-1),(Tlim_up+1),1),
     labels = paste0(c(paste0('<',Tlim_lo),seq(Tlim_lo,0,1),paste0('+',seq(1,Tlim_up,1)),paste0('>',Tlim_up)),'°C'),
     na.value = 'transparent') +
-  scale_size(range = c(0,2), trans = 'log10', guide = F) +
+  scale_size(range = c(0,2), trans = 'log10', guide = 'none') +
   theme_minimal(base_size = 50,
                 base_line_size = 50,
                 base_rect_size = 50) +
@@ -183,6 +195,10 @@ inset <- foreach(j = 1:length(insets_ext),.combine = 'rbind') %do% {
     dplyr::select(x,y,value = layer,inset_no) %>%
     filter(!is.na(value))
 }
+
+inset$value[inset$value >= max(br)] <- max(br)
+inset$value[inset$value <= min(br)] <- min(br)
+
 
 inset$inset_no <- as.factor(inset$inset_no)
 p_in <- ggplot() +
@@ -323,6 +339,7 @@ ts_annual <- rbind(
   ,ts_annual_hist %>% group_by(var,river,RCP,GCM) %>% summarise(value = zoo::rollmean(value,10),year = 1980:2000)
 )
 
+ts$RCP <- factor(as.factor(ts$RCP), levels = c("hist","2p6","4p5","6p0","8p5"))
 p_ts <- ggplot(ts %>% filter(var == 'waterTemp') %>% 
                  mutate(value = (value-273.15))) +
   geom_line(aes(x = year,y = value, color = GCM, linetype = RCP), size = 1) +
@@ -373,7 +390,7 @@ ps <- ggarrange(
   )
 )
 
-ggsave('figs/maps_waterTemp.jpg',ps,
+ggsave('figs/maps_waterTemp2.jpg',ps,
        width = 200,height = 263,dpi = 300,units = 'mm', scale = 5, limitsize = F)
 
 # DISCHARGE ###############################################################################
@@ -411,7 +428,7 @@ p <- ggplot() +
     breaks = br,
     labels = lab,
     na.value = 'transparent') +
-  scale_size(range = c(0,2), trans = 'log10', guide = F) +
+  scale_size(range = c(0,2), trans = 'log10', guide = 'none') +
   theme_minimal(base_size = 50,
                 base_line_size = 50,
                 base_rect_size = 50) +
@@ -442,12 +459,15 @@ qm[qm >= cutoff] <- 1
 crs(qm) <- 4326
 
 inset <- foreach(j = 1:length(insets_ext),.combine = 'rbind') %do% {
-  as(td %>% mask(.,qm) %>% crop(insets_ext[[j]]), "SpatialPixelsDataFrame") %>%
+  as(qdl %>% mask(.,qm) %>% crop(insets_ext[[j]]), "SpatialPixelsDataFrame") %>%
     as.data.frame(.) %>%
     mutate(inset_no = j) %>%
     dplyr::select(x,y,value = layer,inset_no) %>%
     filter(!is.na(value))
 }
+
+inset$value[inset$value >= max(br)] <- max(br)
+inset$value[inset$value <= min(br)] <- min(br)
 
 inset$inset_no <- as.factor(inset$inset_no)
 p_in <- ggplot() +
@@ -526,5 +546,5 @@ ps <- ggarrange(
   )
 )
 
-ggsave('figs/maps_discharge.jpg',ps,
+ggsave('figs/maps_discharge2.jpg',ps,
        width = 200,height = 263,dpi = 300,units = 'mm', scale = 5, limitsize = F)
